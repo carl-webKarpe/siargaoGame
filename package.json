@@ -1,0 +1,15 @@
+{
+  "name": "siargao-pixel-life",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Siargao Pixel Life: Island of Hope — a 3D educational browser game about protecting Siargao Island.",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "db:init": "npm --prefix backend run db:init",
+    "db:generate-sql": "npm --prefix backend run db:generate-sql",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "test": "npm --prefix backend test"
+  }
+}

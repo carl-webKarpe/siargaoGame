@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: #102a43;
+  color: #fff;
+  font-family: Nunito, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+canvas { touch-action: none; }
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-white/15 bg-navy/75 backdrop-blur-md shadow-xl;
+  }
+  .panel-light {
+    @apply rounded-2xl bg-white text-navy shadow-xl;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-display text-lg font-bold
+      transition active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none
+      focus-visible:ring-4 focus-visible:ring-ocean/50;
+  }
+  .btn-primary { @apply btn bg-sunset text-navy shadow-game hover:brightness-110; }
+  .btn-ocean { @apply btn bg-ocean text-white shadow-game hover:brightness-110; }
+  .btn-green { @apply btn bg-tropical text-white shadow-game hover:brightness-110; }
+  .btn-ghost { @apply btn border border-white/25 bg-white/10 text-white hover:bg-white/20; }
+  .btn-sm { @apply px-3 py-1.5 text-sm; }
+  .input {
+    @apply w-full rounded-xl border-2 border-navy/15 bg-white px-3 py-2 text-navy outline-none
+      placeholder:text-navy/40 focus:border-ocean;
+  }
+  .label { @apply mb-1 block text-sm font-bold text-navy/80; }
+  .title-stroke {
+    -webkit-text-stroke: 2px #102a43;
+    paint-order: stroke fill;
+    text-shadow: 0 5px 0 #102a43, 0 10px 20px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
+
+@keyframes floatUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.animate-floatUp { animation: floatUp .35s ease-out both; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.animate-bob { animation: bob 2.4s ease-in-out infinite; }
