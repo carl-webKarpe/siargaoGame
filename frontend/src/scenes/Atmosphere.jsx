@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Sky } from '@react-three/drei';
 import * as THREE from 'three';
 import { playerState } from '../game/playerState.js';
+import Clouds from '../environments/Clouds.jsx';
+import SkyDome from '../environments/SkyDome.jsx';
 
 const PRESETS = {
   day: {
-    elevation: 52, azimuth: 200, sun: '#fff4dc', sunI: 2.4, sky: '#bfe8ff', ground: '#d9c7a0', hemiI: 1.1,
-    fog: '#bfe3f0', turbidity: 3, rayleigh: 0.8, exposure: 0.85,
+    elevation: 50, azimuth: 205, sun: '#fff3dc', sunI: 2.3, sky: '#bfe0fb', ground: '#cdbd98', hemiI: 0.95,
+    fog: '#a9d2ee', turbidity: 1.6, rayleigh: 0.55, exposure: 0.85, skyTop: '#2f7fd6', horizon: '#b7dcf3', cloud: '#ffffff',
   },
   sunset: {
     elevation: 7, azimuth: 180, sun: '#ffb070', sunI: 2.1, sky: '#ffd9b8', ground: '#8a7a8c', hemiI: 1.25,
-    fog: '#f2b48c', turbidity: 8, rayleigh: 2.6, exposure: 0.75,
+    fog: '#f2b48c', turbidity: 8, rayleigh: 2.6, exposure: 0.75, skyTop: '#5d6fae', horizon: '#ffb98a', cloud: '#ffd2b0',
   },
 };
 
@@ -22,6 +23,7 @@ function lerpPreset(a, b, t) {
     elevation: n(a.elevation, b.elevation), azimuth: n(a.azimuth, b.azimuth), sun: c(a.sun, b.sun), sunI: n(a.sunI, b.sunI),
     sky: c(a.sky, b.sky), ground: c(a.ground, b.ground), hemiI: n(a.hemiI, b.hemiI), fog: c(a.fog, b.fog),
     turbidity: n(a.turbidity, b.turbidity), rayleigh: n(a.rayleigh, b.rayleigh), exposure: n(a.exposure, b.exposure),
+    skyTop: c(a.skyTop, b.skyTop), horizon: c(a.horizon, b.horizon), cloud: c(a.cloud, b.cloud),
   };
 }
 
@@ -48,19 +50,20 @@ export function sunDirection(p) {
 }
 
 /** Sky dome, sun light (with player-following shadows), hemisphere light and fog. */
-export default function Atmosphere({ preset, shadows = true, follow = true, fogNear = 90, fogFar = 420 }) {
+export default function Atmosphere({ preset, shadows = true, follow = true, fogNear = 160, fogFar = 700, postFx = false }) {
   const light = useRef();
   const { gl, scene } = useThree();
   const dir = useMemo(() => sunDirection(preset), [preset]);
 
   useEffect(() => {
-    gl.toneMapping = THREE.ACESFilmicToneMapping;
+    // With post-processing the ToneMapping effect does the work instead.
+    gl.toneMapping = postFx ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = preset.exposure;
     scene.fog = new THREE.Fog(preset.fog, fogNear, fogFar);
     return () => {
       scene.fog = null;
     };
-  }, [gl, scene, preset, fogNear, fogFar]);
+  }, [gl, scene, preset, fogNear, fogFar, postFx]);
 
   useEffect(() => {
     if (light.current) scene.add(light.current.target);
@@ -76,7 +79,8 @@ export default function Atmosphere({ preset, shadows = true, follow = true, fogN
 
   return (
     <>
-      <Sky distance={4500} sunPosition={dir.clone().multiplyScalar(100)} turbidity={preset.turbidity} rayleigh={preset.rayleigh} mieCoefficient={0.006} mieDirectionalG={0.85} />
+      <SkyDome top={preset.skyTop} horizon={preset.horizon} sunDir={dir} sunColor={preset.sun} />
+      <Clouds tint={preset.cloud} />
       <hemisphereLight args={[preset.sky, preset.ground, preset.hemiI]} />
       <ambientLight intensity={0.35} />
       <directionalLight
@@ -84,7 +88,7 @@ export default function Atmosphere({ preset, shadows = true, follow = true, fogN
         color={preset.sun}
         intensity={preset.sunI}
         castShadow={shadows}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[shadows === 'high' ? 4096 : 2048, shadows === 'high' ? 4096 : 2048]}
         shadow-camera-left={-45}
         shadow-camera-right={45}
         shadow-camera-top={45}

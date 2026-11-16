@@ -3,6 +3,7 @@ import { api } from '../services/api.js';
 import { audio } from '../services/audio.js';
 
 let noteId = 0;
+let loadToken = 0;
 
 /**
  * Central game store: current destination, missions, trash, UI state.
@@ -65,17 +66,21 @@ export const useGame = create((set, get) => ({
   },
 
   async loadSpot(key) {
-    set({ loadingSpot: true, spotError: null, mode: 'explore', modal: null, prompt: null, trash: { indices: [], total: 0 } });
+    // Ignore results from an earlier trip if the player travels again meanwhile.
+    const token = (loadToken += 1);
+    set({ loadingSpot: true, targetSpot: key, spotError: null, mode: 'explore', modal: null, prompt: null, trash: { indices: [], total: 0 } });
     try {
       const [detail, visit] = await Promise.all([api.spot(key), api.visit(key)]);
+      if (token !== loadToken) return;
       set({ detail, spotKey: key });
       if (get().profile) set({ profile: { ...get().profile, currentSpot: key } });
       await Promise.all([get().refreshMissions(), get().refreshTrash(key), get().loadSpots()]);
+      if (token !== loadToken) return;
       get().handleUpdates(visit.missionUpdates);
     } catch (e) {
-      set({ spotError: e.message });
+      if (token === loadToken) set({ spotError: e.message });
     } finally {
-      set({ loadingSpot: false });
+      if (token === loadToken) set({ loadingSpot: false });
     }
   },
 
@@ -92,6 +97,7 @@ export const useGame = create((set, get) => ({
 
   async refreshTrash(key = get().spotKey) {
     const t = await api.trash(key);
+    if (key !== get().spotKey) return;
     set({ trash: { indices: t.indices, total: t.total } });
     get().updateCleanliness(key, t.cleanliness);
   },

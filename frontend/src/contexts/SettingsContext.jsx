@@ -4,7 +4,7 @@ import { audio } from '../services/audio.js';
 const KEY = 'spl_settings';
 export const DEFAULT_SETTINGS = {
   graphics: 'medium', // low | medium | high
-  timeOfDay: 'sunset', // day | sunset | cycle
+  timeOfDay: 'day', // day | sunset | cycle
   cameraSensitivity: 1,
   invertY: false,
   volume: 0.6,
@@ -43,9 +43,9 @@ export const useSettings = () => useContext(SettingsContext);
 
 /** Graphics quality presets used by the 3D scenes. */
 export const QUALITY = {
-  low: { dpr: [0.75, 1], shadows: false, terrainRes: 80, vegetation: 0.5, oceanSegments: 60 },
-  medium: { dpr: [1, 1.5], shadows: true, terrainRes: 120, vegetation: 0.8, oceanSegments: 110 },
-  high: { dpr: [1, 2], shadows: true, terrainRes: 160, vegetation: 1, oceanSegments: 160 },
+  low: { dpr: [0.75, 1], shadows: false, terrainRes: 100, vegetation: 0.45, grass: 0, oceanSegments: 60 },
+  medium: { dpr: [1, 1.5], shadows: true, terrainRes: 170, vegetation: 0.8, grass: 0.5, oceanSegments: 120 },
+  high: { dpr: [1, 2], shadows: true, terrainRes: 230, vegetation: 1, grass: 1, oceanSegments: 180 },
 };
 
 export const isTouchDevice = () =>

@@ -29,6 +29,14 @@ Players explore nine real destinations, surf Cloud 9, kayak Sugba Lagoon, talk t
 | **Admin dashboard** | Role-protected: players (filter by role), destinations, missions (objective builder), activities, mission/cleanliness/marine/surf records |
 | **Mobile** | Virtual joystick, jump / interact / run buttons, touch camera; graphics quality presets |
 
+### 🎨 Graphics
+- Procedural **detail materials** (world-space noise + bump mapping) for sand, porous limestone, bark and foliage — no texture downloads needed
+- Ocean shader with depth-based colour (crystal shallows → turquoise → deep blue), **caustics**, sky reflections, sun glitter, ripples and shoreline foam
+- Gradient sky dome with sun halo and drifting cumulus clouds; Day / Sunset / Cycle lighting
+- Instanced vegetation: coconut palms with leaflet fronds and wind sway, dense rainforest canopy, grass tufts, seaweed wrack lines
+- Post-processing on Medium/High: ambient occlusion (High), bloom, filmic tone mapping, colour grade, vignette, anti-aliasing
+- **Pacifico Beach, Magpupungko and Sugba Lagoon are modelled on real photos**, which are also shown on the travel loading screen and in the island map (`frontend/public/images/destinations/`)
+
 ---
 
 ## 🧱 Tech stack
@@ -223,3 +231,5 @@ Ideas for next iterations: authored Blender GLB characters and animations, sound
 ---
 
 *Educational project. Destinations are inspired by real places; facts are simplified for learning. Please follow local rules and guides when visiting Siargao.*
+
+*Destination photos in `frontend/public/images/destinations/` were supplied by the project owner as references; make sure you have permission from the photographers before publishing the game publicly.*

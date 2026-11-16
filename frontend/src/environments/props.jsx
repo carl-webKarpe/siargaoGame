@@ -6,8 +6,9 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { rng } from './terrain.js';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { detailMaterial } from './materials.js';
 import { signTexture, stripeTexture, thatchTexture, woodTexture } from './textures.js';
 
 const C = {
@@ -21,134 +22,8 @@ const C = {
   white: '#ffffff',
 };
 
-// ------------------------------------------------------------------ Palms
-function colorize(geo, color) {
-  const g = geo.index ? geo.toNonIndexed() : geo;
-  const col = new THREE.Color(color);
-  const arr = new Float32Array(g.attributes.position.count * 3);
-  for (let i = 0; i < arr.length; i += 3) {
-    arr[i] = col.r;
-    arr[i + 1] = col.g;
-    arr[i + 2] = col.b;
-  }
-  g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
-  g.deleteAttribute('uv');
-  return g;
-}
-
-function buildPalmGeometry(variant = 0) {
-  const parts = [];
-  const r = rng(variant + 11);
-  const segs = 7;
-  const height = 7.5;
-  const bend = 1.4 + r() * 0.8;
-  const pts = [];
-  for (let i = 0; i <= segs; i++) {
-    const t = i / segs;
-    pts.push(new THREE.Vector3(Math.pow(t, 2) * bend, t * height, 0));
-  }
-  for (let i = 0; i < segs; i++) {
-    const a = pts[i];
-    const b = pts[i + 1];
-    const len = a.distanceTo(b);
-    const cyl = new THREE.CylinderGeometry(0.2 - i * 0.012, 0.26 - i * 0.012, len * 1.04, 6);
-    const dir = new THREE.Vector3().subVectors(b, a).normalize();
-    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    cyl.applyQuaternion(q);
-    cyl.translate((a.x + b.x) / 2, (a.y + b.y) / 2, 0);
-    parts.push(colorize(cyl, i % 2 ? C.trunk : '#7a5c3a'));
-  }
-  const top = pts[segs];
-  const fronds = 8;
-  for (let i = 0; i < fronds; i++) {
-    const len = 3.6 + r() * 0.8;
-    const frond = new THREE.PlaneGeometry(len, 1.1, 6, 2);
-    frond.translate(len / 2, 0, 0);
-    const p = frond.attributes.position;
-    for (let k = 0; k < p.count; k++) {
-      const x = p.getX(k);
-      const y = p.getY(k);
-      const t = x / len;
-      p.setY(k, y * (1 - t * 0.85)); // taper
-      p.setZ(k, -Math.pow(x, 2) * 0.13 - Math.abs(y) * 0.35); // droop + V-fold
-    }
-    frond.rotateX(-Math.PI / 2);
-    frond.rotateZ(0.35);
-    frond.rotateY((i / fronds) * Math.PI * 2 + r() * 0.3);
-    frond.translate(top.x, top.y, top.z);
-    frond.computeVertexNormals();
-    parts.push(colorize(frond, i % 2 ? C.leaf : C.leaf2));
-  }
-  for (let i = 0; i < 3; i++) {
-    const nut = new THREE.IcosahedronGeometry(0.22, 0);
-    const a = (i / 3) * Math.PI * 2;
-    nut.translate(top.x + Math.cos(a) * 0.3, top.y - 0.25, Math.sin(a) * 0.3);
-    parts.push(colorize(nut, '#6b4f1d'));
-  }
-  const merged = mergeGeometries(parts);
-  merged.computeVertexNormals();
-  return merged;
-}
-
-/** Instanced coconut palms with a gentle wind sway. */
-export function Palms({ items, groundAt }) {
-  const geos = useMemo(() => [buildPalmGeometry(0), buildPalmGeometry(1)], []);
-  const material = useMemo(() => {
-    const m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.9, side: THREE.DoubleSide });
-    m.userData.time = { value: 0 };
-    m.onBeforeCompile = (shader) => {
-      shader.uniforms.uTime = m.userData.time;
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nuniform float uTime;')
-        .replace(
-          '#include <begin_vertex>',
-          `#include <begin_vertex>
-           float sway = pow(max(position.y, 0.0) / 8.0, 2.0);
-           float ph = instanceMatrix[3].x * 0.3 + instanceMatrix[3].z * 0.2;
-           transformed.x += sin(uTime * 1.3 + ph) * 0.25 * sway;
-           transformed.z += cos(uTime * 1.1 + ph) * 0.18 * sway;`
-        );
-    };
-    return m;
-  }, []);
-  const groups = useMemo(() => [items.filter((_, i) => i % 2 === 0), items.filter((_, i) => i % 2 === 1)], [items]);
-  const refs = [useRef(), useRef()];
-
-  const apply = (mesh, list) => {
-    if (!mesh) return;
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const e = new THREE.Euler();
-    list.forEach((p, i) => {
-      const s = p.s ?? 1;
-      e.set((p.lean ?? 0) * 0.15, p.rot ?? 0, 0);
-      q.setFromEuler(e);
-      m.compose(new THREE.Vector3(p.x, groundAt(p.x, p.z) - 0.2, p.z), q, new THREE.Vector3(s, s, s));
-      mesh.setMatrixAt(i, m);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.computeBoundingSphere();
-  };
-
-  useFrame((_, dt) => {
-    material.userData.time.value += dt;
-  });
-
-  return groups.map((list, gi) =>
-    list.length ? (
-      <instancedMesh
-        key={gi}
-        ref={(m) => {
-          refs[gi].current = m;
-          apply(m, list);
-        }}
-        args={[geos[gi], material, list.length]}
-        castShadow
-        receiveShadow
-      />
-    ) : null
-  );
-}
+// Palms live in vegetation.jsx (re-exported here for existing imports).
+export { Palms } from './vegetation.jsx';
 
 // ------------------------------------------------------------------ Structures
 export function Deck({ p, rails = '', posts = true, color }) {
@@ -330,26 +205,61 @@ export function Sign({ position, rotation = 0, title, subtitle, width = 4, heigh
   );
 }
 
-export function Rock({ position, scale = 1, color = C.rock, seed = 1, rotation = 0 }) {
-  const geo = useMemo(() => {
-    const g = new THREE.DodecahedronGeometry(1, 1);
-    const p = g.attributes.position;
-    // Deform by position (not vertex index) so shared corners stay welded.
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i);
-      const y = p.getY(i);
-      const z = p.getZ(i);
-      const h = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719 + seed * 4.1) * 43758.5453;
-      const k = 0.82 + (h - Math.floor(h)) * 0.3;
-      p.setXYZ(i, x * k, y * k, z * k);
-    }
-    g.computeVertexNormals();
-    return g;
-  }, [seed]);
+/** Lumpy, smooth-shaded rock geometry deformed by layered noise. */
+function rockGeometry(seed, { detail = 3, squash = 1, lumps = 0.28, flatBottom = true } = {}) {
+  const g = new THREE.IcosahedronGeometry(1, detail);
+  g.deleteAttribute('normal');
+  g.deleteAttribute('uv');
+  const m = mergeVertices(g);
+  const p = m.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.set(p.getX(i), p.getY(i), p.getZ(i));
+    const n =
+      Math.sin(v.x * 2.1 + seed) * Math.sin(v.y * 1.7 + seed * 2.3) * Math.sin(v.z * 2.4 - seed) * 0.6 +
+      Math.sin(v.x * 5.3 - seed) * Math.sin(v.y * 4.9 + seed) * Math.sin(v.z * 5.1) * 0.25;
+    v.multiplyScalar(1 + n * lumps);
+    v.y *= squash;
+    if (flatBottom && v.y < -0.55 * squash) v.y = -0.55 * squash + (v.y + 0.55 * squash) * 0.2;
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  m.computeVertexNormals();
+  return m;
+}
+
+const rockMats = new Map();
+function rockMaterial(color) {
+  if (!rockMats.has(color)) rockMats.set(color, detailMaterial('rock', { material: { color, roughness: 0.97 } }));
+  return rockMats.get(color);
+}
+const mossMat = () => rockMaterial('#4e7a2c');
+
+export function Rock({ position, scale = 1, color = '#8f897d', seed = 1, rotation = 0, moss = false }) {
+  const geo = useMemo(() => rockGeometry(seed), [seed]);
+  const mossGeo = useMemo(() => (moss ? rockGeometry(seed + 50, { detail: 2, squash: 0.35, lumps: 0.4 }) : null), [moss, seed]);
+  const sc = Array.isArray(scale) ? scale : [scale, scale, scale];
   return (
-    <mesh geometry={geo} position={position} scale={scale} rotation-y={rotation} castShadow receiveShadow>
-      <meshStandardMaterial color={color} flatShading roughness={1} />
-    </mesh>
+    <group position={position} rotation-y={rotation}>
+      <mesh geometry={geo} material={rockMaterial(color)} scale={sc} castShadow receiveShadow />
+      {moss && <mesh geometry={mossGeo} material={mossMat()} position-y={sc[1] * 0.78} scale={[sc[0] * 0.92, sc[1] * 0.9, sc[2] * 0.92]} castShadow />}
+    </group>
+  );
+}
+
+/**
+ * Magpupungko-style "mushroom" rock: a wide, undercut limestone boulder
+ * balanced on an eroded pedestal, with vegetation on top.
+ */
+export function MushroomRock({ position, size = 5, seed = 1, rotation = 0, pedestal = 0.45, green = true }) {
+  const top = useMemo(() => rockGeometry(seed, { squash: 0.72, lumps: 0.32 }), [seed]);
+  const base = useMemo(() => rockGeometry(seed + 9, { squash: 1, lumps: 0.25 }), [seed]);
+  const cap = useMemo(() => rockGeometry(seed + 21, { detail: 2, squash: 0.3, lumps: 0.55 }), [seed]);
+  return (
+    <group position={position} rotation-y={rotation}>
+      <mesh geometry={base} material={rockMaterial('#6f665a')} position-y={size * 0.25} scale={[size * pedestal, size * 0.4, size * pedestal * 0.85]} castShadow receiveShadow />
+      <mesh geometry={top} material={rockMaterial('#7d7466')} position-y={size * 0.95} scale={[size * 0.85, size * 0.7, size * 0.75]} castShadow receiveShadow />
+      {green && <mesh geometry={cap} material={mossMat()} position-y={size * 1.42} scale={[size * 0.7, size * 0.5, size * 0.62]} castShadow />}
+    </group>
   );
 }
 
@@ -370,9 +280,7 @@ export function Karst({ position, height = 18, radius = 6, seed = 1, rotation = 
   }, [height, radius, seed]);
   return (
     <group position={position} rotation-y={rotation}>
-      <mesh geometry={geo} position-y={height / 2 - 2} castShadow receiveShadow>
-        <meshStandardMaterial color="#9a9488" flatShading roughness={1} />
-      </mesh>
+      <mesh geometry={geo} material={rockMaterial('#9a9488')} position-y={height / 2 - 2} castShadow receiveShadow />
       <mesh position-y={height - 1.5} scale={[radius * 0.85, radius * 0.5, radius * 0.85]} castShadow>
         <icosahedronGeometry args={[1, 1]} />
         <meshStandardMaterial color="#2f7a3f" flatShading />
@@ -757,4 +665,153 @@ export function Kayak({ position, rotation = 0, color = '#ff9f43' }) {
       </mesh>
     </group>
   );
+}
+
+/** Thick hip roof of layered thatch. */
+function ThatchRoof({ w, d, h, y, color = '#7a5a36', overhang = 0.9 }) {
+  const thatch = thatchTexture();
+  const geo = useMemo(() => {
+    const W = w / 2 + overhang;
+    const D = d / 2 + overhang;
+    const ridge = Math.max(0.2, W - D) ;
+    const g = new THREE.BufferGeometry();
+    // hip roof: 4 eaves corners + 2 ridge points
+    const v = [
+      [-W, 0, -D], [W, 0, -D], [W, 0, D], [-W, 0, D],
+      [-ridge, h, 0], [ridge, h, 0],
+    ];
+    const faces = [[0, 1, 5], [0, 5, 4], [2, 3, 4], [2, 4, 5], [1, 2, 5], [3, 0, 4]];
+    const pos = [];
+    const uv = [];
+    faces.forEach((f) => f.forEach((i) => {
+      pos.push(...v[i]);
+      uv.push(v[i][0] * 0.4, v[i][1] * 0.8 + v[i][2] * 0.4);
+    }));
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.computeVertexNormals();
+    return g;
+  }, [w, d, h, overhang]);
+  return (
+    <group position-y={y}>
+      <mesh geometry={geo} castShadow receiveShadow>
+        <meshStandardMaterial map={thatch} color={color} roughness={1} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh geometry={geo} position-y={-0.25} scale={[1.02, 1, 1.02]}>
+        <meshStandardMaterial map={thatch} color={color} roughness={1} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+/** White-walled beach resort with a thick thatched roof and veranda (Pacifico). */
+export function ResortHouse({ position, rotation = 0, w = 9, d = 6, sign }) {
+  return (
+    <group position={position} rotation-y={rotation}>
+      <mesh position-y={0.25} receiveShadow castShadow>
+        <boxGeometry args={[w + 2.4, 0.5, d + 2.4]} />
+        <meshStandardMaterial color="#d8d2c4" roughness={0.9} />
+      </mesh>
+      <mesh position-y={2.2} castShadow receiveShadow>
+        <boxGeometry args={[w, 3.4, d]} />
+        <meshStandardMaterial color="#f4f1ea" roughness={0.85} />
+      </mesh>
+      {[-w / 3, 0, w / 3].map((x) => (
+        <mesh key={x} position={[x, 2.4, d / 2 + 0.01]}>
+          <planeGeometry args={[1.4, 1.3]} />
+          <meshStandardMaterial color="#2d6f8f" roughness={0.2} metalness={0.2} />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.6, d / 2 + 0.02]}>
+        <planeGeometry args={[1.1, 2.2]} />
+        <meshStandardMaterial color="#6b4a2b" />
+      </mesh>
+      {[-w / 2 - 0.9, w / 2 + 0.9].flatMap((x) => [-d / 2 - 0.9, d / 2 + 0.9].map((z) => (
+        <mesh key={`${x}${z}`} position={[x, 2.2, z]} castShadow>
+          <cylinderGeometry args={[0.13, 0.15, 3.6, 7]} />
+          <meshStandardMaterial color="#5b3a1e" />
+        </mesh>
+      )))}
+      <ThatchRoof w={w + 1.8} d={d + 1.8} h={3.2} y={3.9} />
+      {sign && (
+        <mesh position={[0, 3.6, d / 2 + 1.15]}>
+          <planeGeometry args={[3.4, 0.7]} />
+          <meshBasicMaterial map={signTexture(sign, '', { bg: '#2a6f97', fg: '#ffffff', accent: '#ffffff' })} toneMapped={false} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+/** Small open beach cabana / kubo with a thatched roof. */
+export function Cabana({ position, rotation = 0, size = 3, color = '#8a6a40' }) {
+  return (
+    <group position={position} rotation-y={rotation}>
+      <mesh position-y={0.55} castShadow receiveShadow>
+        <boxGeometry args={[size, 0.15, size]} />
+        <meshStandardMaterial map={woodTexture()} />
+      </mesh>
+      {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => (
+        <mesh key={`${sx}${sz}`} position={[(sx * size) / 2.2, 1.3, (sz * size) / 2.2]} castShadow>
+          <cylinderGeometry args={[0.08, 0.09, 2.6, 6]} />
+          <meshStandardMaterial color="#5b3a1e" />
+        </mesh>
+      )))}
+      <ThatchRoof w={size} d={size} h={1.5} y={2.5} color={color} overhang={0.5} />
+    </group>
+  );
+}
+
+/** Floating cottage on bamboo pontoons with a white roof (Sugba Lagoon). */
+export function FloatingCottage({ position, rotation = 0, w = 12, d = 8 }) {
+  return (
+    <group position={position} rotation-y={rotation}>
+      {[-d / 2 + 0.6, d / 2 - 0.6].map((z) => (
+        <mesh key={z} position={[0, 0.2, z]} rotation-z={Math.PI / 2}>
+          <cylinderGeometry args={[0.45, 0.45, w, 10]} />
+          <meshStandardMaterial color="#c9b48a" roughness={0.8} />
+        </mesh>
+      ))}
+      {[-w / 2 + 0.4, 0, w / 2 - 0.4].flatMap((x) => [-d / 2 + 0.4, d / 2 - 0.4].map((z) => (
+        <mesh key={`${x}${z}`} position={[x, 2.6, z]} castShadow>
+          <cylinderGeometry args={[0.12, 0.12, 2.9, 6]} />
+          <meshStandardMaterial color="#f2efe8" />
+        </mesh>
+      )))}
+      <mesh position={[0, 4.1, 0]} castShadow>
+        <boxGeometry args={[w + 0.8, 0.25, d + 0.8]} />
+        <meshStandardMaterial color="#f7f7f2" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 4.45, 0]} castShadow>
+        <boxGeometry args={[w - 2, 0.45, d - 2.5]} />
+        <meshStandardMaterial color="#f0f0ea" roughness={0.6} />
+      </mesh>
+      <mesh position={[-w / 4, 2.0, -d / 2 + 0.5]}>
+        <boxGeometry args={[w / 2, 1.6, 0.15]} />
+        <meshStandardMaterial color="#e9e4d8" />
+      </mesh>
+      {[-2, 0, 2].map((x) => (
+        <mesh key={x} position={[x, 1.6, 0]} castShadow>
+          <boxGeometry args={[1.6, 0.1, 0.9]} />
+          <meshStandardMaterial map={woodTexture()} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Low picket / bamboo fence segment between two points. */
+export function Fence({ from, to, groundAt, color = '#7a5a36' }) {
+  const posts = useMemo(() => {
+    const [x1, z1] = from;
+    const [x2, z2] = to;
+    const n = Math.max(1, Math.round(Math.hypot(x2 - x1, z2 - z1) / 1.2));
+    return Array.from({ length: n + 1 }, (_, i) => [x1 + ((x2 - x1) * i) / n, z1 + ((z2 - z1) * i) / n]);
+  }, [from, to]);
+  return posts.map(([x, z], i) => (
+    <mesh key={i} position={[x, groundAt(x, z) + 0.45, z]} castShadow>
+      <boxGeometry args={[0.1, 0.9, 0.1]} />
+      <meshStandardMaterial color={color} />
+    </mesh>
+  ));
 }

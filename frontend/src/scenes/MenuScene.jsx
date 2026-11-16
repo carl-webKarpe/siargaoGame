@@ -4,6 +4,8 @@ import Atmosphere, { sunDirection, useSunPreset } from './Atmosphere.jsx';
 import Terrain from '../environments/Terrain.jsx';
 import Ocean from '../environments/Ocean.jsx';
 import { Palms } from '../environments/props.jsx';
+import { Jungle } from '../environments/vegetation.jsx';
+import PostFX from './PostFX.jsx';
 import { groundHeight } from '../environments/terrain.js';
 import { playerState } from '../game/playerState.js';
 import Humanoid from '../characters/Humanoid.jsx';
@@ -47,18 +49,20 @@ function Strollers({ layout }) {
 
 function MenuWorld({ layout, settings }) {
   const quality = QUALITY[settings.graphics] || QUALITY.medium;
-  const preset = useSunPreset(settings.timeOfDay === 'day' ? 'day' : 'sunset');
+  const preset = useSunPreset(settings.timeOfDay === 'sunset' ? 'sunset' : 'day');
   const Features = layout.Features;
   const groundAt = (x, z) => groundHeight(layout, x, z);
   return (
     <>
       <OrbitCamera />
-      <Atmosphere preset={preset} shadows={quality.shadows} follow />
+      <Atmosphere preset={preset} shadows={quality.shadows} follow postFx={settings.graphics !== 'low'} />
       <Terrain layout={layout} resolution={quality.terrainRes} />
-      <Ocean layout={layout} segments={quality.oceanSegments} sunDir={sunDirection(preset)} sunColor={preset.sun} fog={{ color: preset.fog, near: 90, far: 420 }} />
+      <Ocean layout={layout} segments={quality.oceanSegments} sunDir={sunDirection(preset)} sunColor={preset.sun} fog={{ color: preset.fog, near: 160, far: 700 }} sky={{ top: preset.skyTop, horizon: preset.horizon }} />
       <Features groundAt={groundAt} />
       <Palms items={layout.palms} groundAt={groundAt} />
+      <Jungle items={layout.jungle || []} groundAt={groundAt} />
       <Strollers layout={layout} />
+      <PostFX quality={settings.graphics} />
     </>
   );
 }

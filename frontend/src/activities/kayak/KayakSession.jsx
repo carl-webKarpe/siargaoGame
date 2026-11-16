@@ -8,6 +8,7 @@ import { playerState } from '../../game/playerState.js';
 import { interactables } from '../../game/registry.js';
 import { useGame } from '../../game/store.js';
 import { kayakRuntime } from '../runtime.js';
+import { onPlatform } from '../../environments/terrain.js';
 import { audio } from '../../services/audio.js';
 
 /** Kayaking mini-game: paddle through the buoys and fish out floating litter. */
@@ -55,7 +56,7 @@ export default function KayakSession({ layout, look }) {
       s.yaw -= turn * 1.6 * dt * (0.4 + Math.min(1, Math.abs(s.speed) / 4));
       const nx = s.x + Math.sin(s.yaw) * s.speed * dt;
       const nz = s.z + Math.cos(s.yaw) * s.speed * dt;
-      if (layout.height(nx, nz) < -0.6) {
+      if (layout.height(nx, nz) < -0.6 && !onPlatform(layout, nx, nz)) {
         s.x = nx;
         s.z = nz;
       } else {

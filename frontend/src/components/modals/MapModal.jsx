@@ -3,6 +3,7 @@ import Modal from '../ui/Modal.jsx';
 import { useGame } from '../../game/store.js';
 import { cleanColor } from '../../game/format.js';
 import ProgressBar from '../ui/ProgressBar.jsx';
+import { DESTINATION_PHOTOS } from '../../environments/photos.js';
 
 /** Stylized map of Siargao and nearby islands. Coordinates are 0-100 percentages. */
 const ISLAND_PATH =
@@ -60,6 +61,13 @@ export default function MapModal({ onClose }) {
         </div>
         {spot && (
           <div className="flex flex-col">
+            {DESTINATION_PHOTOS[spot.key] && (
+              <div className="mb-3 flex gap-2">
+                {DESTINATION_PHOTOS[spot.key].map((src) => (
+                  <img key={src} src={src} alt={`${spot.name}, Siargao`} className="h-28 min-w-0 flex-1 rounded-xl object-cover shadow" />
+                ))}
+              </div>
+            )}
             <h3 className="font-display text-2xl font-bold">{spot.name}</h3>
             <div className="text-sm font-bold text-ocean">{spot.municipality}</div>
             <p className="mt-2 text-sm text-navy/80">{spot.description}</p>

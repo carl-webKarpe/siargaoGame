@@ -1,5 +1,6 @@
 import { fbm, lerp, smooth } from '../terrain.js';
 import { genPalms, LOOKS, PALETTES } from '../common.js';
+import { genJungle } from '../vegetation.jsx';
 import { Bench, Birds, Deck, DistantIslands, EcoBin, NipaHut, Sign, Stall, SurfRack, Umbrella, ViewingTower } from '../props.jsx';
 import SurfBreak from '../../activities/surfing/SurfBreak.jsx';
 
@@ -31,6 +32,7 @@ const layout = {
   water: { shallow: '#3fe0d0', deep: '#0369a1', wave: 1, depthScale: 7 },
   height,
   platforms,
+  cameraBlockers: [{ x: 0, z: -63, w: 17, d: 15, y0: 3.4, y1: 6.5 }],
   obstacles: [
     { x: -16, z: 21, r: 3 },
     { x: -32, z: 27, r: 3 },
@@ -69,6 +71,7 @@ const layout = {
   islands: [{ x: -220, z: -260, s: 60 }, { x: 160, z: -300, s: 45 }, { x: 320, z: -120, s: 50 }],
   Features,
 };
+layout.jungle = genJungle(layout, { count: 380, min: 3.5, areas: [{ x0: -120, x1: 120, z0: 30, z1: 120 }], avoid: [[-16, 21, 6], [-32, 27, 6], [30, 28, 6], [55, 31, 6]], scale: [3.5, 7] });
 layout.palms = genPalms('cloud9', 70, [{ x0: -110, x1: 110, z0: 14, z1: 105 }], layout, {
   avoid: [[-16, 21, 6], [-32, 27, 6], [30, 28, 6], [55, 31, 6], [0, 18, 5], [-9, 15, 4], [14, 12, 4], [9, 22, 3]],
 });

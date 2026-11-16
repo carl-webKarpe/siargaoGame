@@ -1,5 +1,6 @@
 import { fbm, lerp, smooth } from '../terrain.js';
 import { LOOKS, PALETTES, genPalms } from '../common.js';
+import { genJungle } from '../vegetation.jsx';
 import { Bush, Rock, Sign, Waterfall, Bench, EcoBin } from '../props.jsx';
 import { scatter, seedFrom } from '../terrain.js';
 
@@ -48,6 +49,7 @@ const layout = {
   },
   Features,
 };
+layout.jungle = genJungle(layout, { count: 420, min: 2.5, areas: [{ x0: -100, x1: 100, z0: -100, z1: 100 }], avoid: [[8, 48, 7], [14, 36, 5], [16, 22, 4], [-24, -6, 4], [18, -26, 4], [0, -42, 18]], minDist: 4, scale: [3, 6.5] });
 layout.palms = genPalms('taktak', 30, [{ x0: -90, x1: 90, z0: -50, z1: 90 }], layout, {
   min: 1, max: 12, minDist: 6, avoid: [[8, 48, 6], [14, 36, 4], [16, 22, 3], [-24, -6, 3], [18, -26, 3]],
 });

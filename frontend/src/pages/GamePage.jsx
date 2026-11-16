@@ -8,6 +8,7 @@ import { interactables } from '../game/registry.js';
 import { loadLayout } from '../environments/index.js';
 import { audio } from '../services/audio.js';
 import { TIPS } from '../game/format.js';
+import { DESTINATION_PHOTOS } from '../environments/photos.js';
 import DestinationScene from '../scenes/DestinationScene.jsx';
 import Loading from '../components/ui/Loading.jsx';
 import PlayerCard from '../components/hud/PlayerCard.jsx';
@@ -27,6 +28,8 @@ export default function GamePage() {
   const { settings } = useSettings();
   const profile = useGame((s) => s.profile);
   const spotKey = useGame((s) => s.spotKey);
+  const targetSpot = useGame((s) => s.targetSpot);
+  const photoKey = targetSpot || spotKey;
   const detail = useGame((s) => s.detail);
   const loadingSpot = useGame((s) => s.loadingSpot);
   const spotError = useGame((s) => s.spotError);
@@ -105,7 +108,14 @@ export default function GamePage() {
     <div className="fixed inset-0 select-none overflow-hidden bg-navy">
       {sceneReady && <DestinationScene key={detail.spot.key} layout={layout} settings={settings} look={look} />}
 
-      {!sceneReady || loadingSpot ? <Loading label={detail && !loadingSpot ? `Arriving at ${detail.spot.name}…` : 'Traveling…'} tip={tip} /> : null}
+      {!sceneReady || loadingSpot ? (
+        <Loading
+          label={detail && !loadingSpot ? `Arriving at ${detail.spot.name}…` : 'Traveling…'}
+          tip={tip}
+          photo={DESTINATION_PHOTOS[photoKey]?.[0]}
+          caption={DESTINATION_PHOTOS[photoKey] ? 'The real destination in Siargao' : null}
+        />
+      ) : null}
       {(spotError || layoutError) && (
         <div className="absolute inset-0 z-50 grid place-items-center bg-navy/90 p-6 text-center">
           <div className="panel-light max-w-md p-6">

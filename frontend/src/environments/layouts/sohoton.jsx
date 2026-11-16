@@ -1,5 +1,6 @@
 import { fbm, lerp, smooth } from '../terrain.js';
 import { genPalms, LOOKS, PALETTES } from '../common.js';
+import { genJungle } from '../vegetation.jsx';
 import { Bangka, CaveArch, Deck, Jellyfish, Karst, Sign } from '../props.jsx';
 
 function height(x, z) {
@@ -44,6 +45,7 @@ const layout = {
   trashValid: (x, z) => height(x, z) > 0.1,
   Features,
 };
+layout.jungle = genJungle(layout, { count: 420, min: 4, scale: [3.5, 7] });
 layout.palms = genPalms('sohoton', 20, [{ x0: -60, x1: 60, z0: 38, z1: 80 }], layout, { min: 0.6, max: 8, avoid: [[0, 38, 5], [-6, 33, 3], [6, 35, 3]] });
 
 function Features({ groundAt }) {

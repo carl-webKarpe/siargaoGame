@@ -1,5 +1,6 @@
 import { fbm, lerp, smooth } from '../terrain.js';
 import { genPalms, LOOKS, PALETTES } from '../common.js';
+import { genJungle } from '../vegetation.jsx';
 import { Bangka, Birds, DistantIslands, EcoBin, House, NipaHut, Sign, Stall } from '../props.jsx';
 
 function height(x, z) {
@@ -49,6 +50,7 @@ const layout = {
   islands: [{ x: -120, z: -140, s: 18 }, { x: 160, z: -200, s: 25, h: 3, color: '#f4e4c1' }, { x: 0, z: -330, s: 90 }],
   Features,
 };
+layout.jungle = genJungle(layout, { count: 260, min: 3.2, areas: [{ x0: -110, x1: 110, z0: 45, z1: 110 }], scale: [3, 6] });
 layout.palms = genPalms('daku', 70, [{ x0: -110, x1: 110, z0: 0, z1: 105 }], layout, {
   avoid: [...houses.map(([x, z]) => [x, z, 6]), ...huts.map(([x, z]) => [x, z, 5]), [0, 5, 5], [15, 10, 5], [-16, 2, 4], [0, 14, 4]],
 });

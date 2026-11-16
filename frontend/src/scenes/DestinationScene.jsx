@@ -4,6 +4,8 @@ import Atmosphere, { sunDirection, useSunPreset } from './Atmosphere.jsx';
 import Terrain from '../environments/Terrain.jsx';
 import Ocean from '../environments/Ocean.jsx';
 import { Palms } from '../environments/props.jsx';
+import { Jungle, Grass, Wrack, genGrass } from '../environments/vegetation.jsx';
+import PostFX from './PostFX.jsx';
 import { groundHeight } from '../environments/terrain.js';
 import NPC from '../characters/NPC.jsx';
 import Player from '../characters/Player.jsx';
@@ -47,7 +49,7 @@ function World({ layout, settings, look }) {
   const role = useGame((s) => s.profile?.role);
   const preset = useSunPreset(settings.timeOfDay);
   const sunDir = useMemo(() => sunDirection(preset), [preset]);
-  const fog = useMemo(() => ({ color: preset.fog, near: 90, far: 420 }), [preset]);
+  const fog = useMemo(() => ({ color: preset.fog, near: 160, far: 700 }), [preset]);
   const groundAt = useCallback((x, z) => groundHeight(layout, x, z), [layout]);
   const [repaired, setRepaired] = useState(() => new Set());
   const markRepaired = useCallback((i) => setRepaired((s) => new Set(s).add(i)), []);
@@ -59,6 +61,11 @@ function World({ layout, settings, look }) {
     const keep = Math.round(list.length * quality.vegetation);
     return list.slice(0, keep);
   }, [layout, quality.vegetation]);
+  const jungle = useMemo(() => {
+    const list = layout.jungle || [];
+    return list.slice(0, Math.round(list.length * quality.vegetation));
+  }, [layout, quality.vegetation]);
+  const grass = useMemo(() => (layout.grass === false ? [] : genGrass(layout, Math.round((layout.grassCount ?? 900) * quality.grass))), [layout, quality.grass]);
   const npcInfo = useMemo(() => Object.fromEntries((detail?.npcs || []).map((n) => [n.key, n])), [detail]);
   const markers = useMemo(() => npcMarkers(layout, missions, layout.key, role), [layout, missions, role]);
   const actConfig = (key) => detail?.activities.find((a) => a.key === key)?.config || {};
@@ -69,11 +76,14 @@ function World({ layout, settings, look }) {
 
   return (
     <>
-      <Atmosphere preset={preset} shadows={quality.shadows} />
+      <Atmosphere preset={preset} shadows={quality.shadows} postFx={settings.graphics !== 'low'} />
       <Terrain layout={layout} resolution={quality.terrainRes} />
-      <Ocean layout={layout} segments={quality.oceanSegments} cleanliness={detail?.spot.cleanliness ?? 100} sunDir={sunDir} sunColor={preset.sun} fog={fog} />
+      <Ocean layout={layout} segments={quality.oceanSegments} cleanliness={detail?.spot.cleanliness ?? 100} sunDir={sunDir} sunColor={preset.sun} fog={fog} sky={{ top: preset.skyTop, horizon: preset.horizon }} />
       <Features groundAt={groundAt} />
       <Palms items={palms} groundAt={groundAt} />
+      <Jungle items={jungle} groundAt={groundAt} />
+      <Grass items={grass} groundAt={groundAt} />
+      {layout.wrack && <Wrack items={layout.wrack} groundAt={groundAt} />}
 
       {layout.npcs
         .filter((n) => npcInfo[n.key])
@@ -133,6 +143,7 @@ function World({ layout, settings, look }) {
       )}
       {mode === 'surf' && modeOptions && <SurfSession layout={layout} options={modeOptions} look={look} />}
       {mode === 'kayak' && kayak && <KayakSession layout={layout} look={look} />}
+      <PostFX quality={settings.graphics} />
     </>
   );
 }
@@ -143,7 +154,7 @@ export default function DestinationScene({ layout, settings, look }) {
     <Canvas
       shadows={quality.shadows}
       dpr={quality.dpr}
-      gl={{ antialias: settings.graphics !== 'low', powerPreference: 'high-performance' }}
+      gl={{ antialias: false, powerPreference: 'high-performance', stencil: false }}
       camera={{ fov: 55, near: 0.1, far: 2500, position: [0, 10, 30] }}
     >
       <World layout={layout} settings={settings} look={look} />

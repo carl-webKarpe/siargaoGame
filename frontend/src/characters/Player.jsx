@@ -200,9 +200,24 @@ export default function Player({ layout, look, active = true, sensitivity = 1, i
     playerState.camYaw = c.yaw;
 
     const target = tmpTarget.current.set(p.x, p.y + 1.7, p.z);
-    const cx = target.x + Math.sin(c.yaw) * Math.cos(c.pitch) * c.dist;
-    const cz = target.z + Math.cos(c.yaw) * Math.cos(c.pitch) * c.dist;
-    let cy = target.y + Math.sin(c.pitch) * c.dist;
+    // Pull the camera in when a roof or wall (layout.cameraBlockers) is in the way.
+    let dist = c.dist;
+    const blockers = layout.cameraBlockers || [];
+    const blocked = (d) => {
+      // sample the line of sight from the player to the camera
+      for (let k = 1; k <= 8; k++) {
+        const t = (d * k) / 8;
+        const bx = target.x + Math.sin(c.yaw) * Math.cos(c.pitch) * t;
+        const bz = target.z + Math.cos(c.yaw) * Math.cos(c.pitch) * t;
+        const by = target.y + Math.sin(c.pitch) * t;
+        if (blockers.some((b) => Math.abs(bx - b.x) < b.w / 2 && Math.abs(bz - b.z) < b.d / 2 && by > b.y0 && by < b.y1)) return true;
+      }
+      return false;
+    };
+    while (blockers.length && dist > 2.5 && blocked(dist)) dist -= 0.5;
+    const cx = target.x + Math.sin(c.yaw) * Math.cos(c.pitch) * dist;
+    const cz = target.z + Math.cos(c.yaw) * Math.cos(c.pitch) * dist;
+    let cy = target.y + Math.sin(c.pitch) * dist;
     cy = Math.max(cy, groundHeight(layout, cx, cz) + 0.6, (layout.water?.level ?? 0) + 0.8);
     if (!c.init) {
       camera.position.set(cx, cy, cz);

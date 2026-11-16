@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { fbm } from './terrain.js';
+import { detailMaterial } from './materials.js';
 
 const tmp = new THREE.Color();
 const tmp2 = new THREE.Color();
@@ -54,9 +55,6 @@ export default function Terrain({ layout, resolution = 120 }) {
     return g;
   }, [layout, resolution]);
 
-  return (
-    <mesh geometry={geometry} receiveShadow>
-      <meshStandardMaterial vertexColors flatShading roughness={0.95} metalness={0} />
-    </mesh>
-  );
+  const material = useMemo(() => detailMaterial('terrain', { material: { vertexColors: true, roughness: 0.96 } }), []);
+  return <mesh geometry={geometry} material={material} receiveShadow castShadow={false} />;
 }
